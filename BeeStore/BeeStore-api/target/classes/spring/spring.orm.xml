@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd ">
+
+	<!-- 【1】Hibernate SessionFactory -->
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate5.LocalSessionFactoryBean">
+
+		<!-- 【I】配置数据源 -->
+		<property name="dataSource" ref="dataSource"></property>
+
+		<!-- 【II】配置需要扫描的Hibernate实体domain所在的包 -->
+		<property name="packagesToScan">
+			<list>
+				<value>com.cheer.bee.domain</value>
+			</list>
+		</property>
+
+		<!-- 【III】配置hibernate基本信息 -->
+		<property name="hibernateProperties">
+			<props>
+
+				<!-- 基本配置有4个 -->
+				<prop key="hibernate.dialect">${hibernate.dialect}</prop>
+				<prop key="hibernate.hbm2ddl.auto">update</prop>
+				<prop key="hibernate.show_sql">true</prop>
+				<prop key="hibernate.format_sql">true</prop>
+
+				<!-- 【重要】 -->
+				<prop key="hibernate.current_session_context_class">
+					org.springframework.orm.hibernate5.SpringSessionContext
+				</prop>
+
+				<!-- 【附加】 -->
+				<prop key="hibernate.query.substitutions">true 1, false 0</prop>
+				<prop key="hibernate.default_batch_fetch_size">16</prop>
+				<prop key="hibernate.max_fetch_depth">2</prop>
+				<prop key="hibernate.jdbc.batch_size">100</prop>
+
+				<!-- Hibernate二级缓存内容 -->
+				<prop key="hibernate.cache.use_second_level_cache">true</prop>
+				<prop key="hibernate.cache.region.factory_class">org.hibernate.cache.ehcache.EhCacheRegionFactory
+				</prop>
+				<prop key="hibernate.cache.use_query_cache">true</prop>
+				<prop key="hibernate.cache.use_structured_entries">true</prop>
+				<prop key="net.sf.ehcache.configurationResourceName">/cache/ehcache.xml
+				</prop>
+				
+				<!-- 开发人员的统计日志，正式商用时需要关闭 -->
+				<prop key="hibernate.generate_statistics">false</prop>
+			</props>
+		</property>
+	</bean>
+
+	<!-- 【2】事务管理器 -->
+	<bean id="transactionManager"
+		class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory"></property>
+	</bean>
+
+	<!-- 【3】事务通知 -->
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="insert" propagation="REQUIRED" />
+			<tx:method name="save" propagation="REQUIRED" />
+			<tx:method name="persist" propagation="REQUIRED" />
+			<tx:method name="delete" propagation="REQUIRED" />
+			<tx:method name="update" propagation="REQUIRED" />
+			<tx:method name="batch*" propagation="REQUIRED" />
+			<tx:method name="get*" propagation="REQUIRED" read-only="true" />
+			<tx:method name="query" propagation="REQUIRED" read-only="true" />
+			<tx:method name="find" propagation="REQUIRED" read-only="true" />
+			<tx:method name="*" propagation="REQUIRED" />
+		</tx:attributes>
+	</tx:advice>
+
+	<!-- 【4】aop配置 将事务加入切点 -->
+	<aop:config>
+		<!-- 【配置切点】 -->
+		<aop:pointcut
+			expression="execution(* com.cheer.bee.dao.*.*(..)) || execution(* com.cheer.bee.service.*.*(..))"
+			id="pointCut" />
+		<!-- 【将通知加入切点】 -->
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="pointCut" />
+	</aop:config>
+
+	<!-- 启用AspectJ注解方式 -->
+	<aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+
+	<!-- 启用spring注解事务 -->
+	<tx:annotation-driven transaction-manager="transactionManager" />
+</beans>
